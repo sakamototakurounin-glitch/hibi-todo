@@ -1,0 +1,19 @@
+export const DAY=86400000;
+export function validDate(s){return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;}
+export const stamp=s=>Date.parse(s+'T00:00:00Z');
+export const addDays=(s,n)=>new Date(stamp(s)+n*DAY).toISOString().slice(0,10);
+export const diff=(a,b)=>Math.round((stamp(a)-stamp(b))/DAY);
+export function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+export function monday(s){return addDays(s,-((new Date(stamp(s)).getUTCDay()+6)%7));}
+export const dates=s=>Array.from({length:7},(_,i)=>addDays(monday(s),i));
+export function schedule(t,d){return [...t.versions].reverse().find(v=>v.effective<=d);}
+export function active(t,d){const v=schedule(t,d);return !!v&&d>=v.start&&(!t.deletedFrom||d<t.deletedFrom);}
+export const record=(db,id,d)=>db.records[`${id}:${d}`];
+export const status=(db,id,d)=>record(db,id,d)?.status||'todo';
+export function weekly(db,t,d){const v=schedule(t,d);if(!v)return {done:0,target:0};const ds=dates(d);const done=ds.filter(x=>status(db,t.id,x)==='done').length;return {done,target:v.kind==='weekly'?v.n:ds.filter(x=>{const s=schedule(t,x);return active(t,x)&&s?.kind==='interval'&&diff(x,s.start)%s.n===0;}).length};}
+export function suggested(db,t,d){if(!active(t,d))return false;const v=schedule(t,d);if(v.kind==='interval')return diff(d,v.start)%v.n===0;const mon=monday(d),end=addDays(mon,6);const prior=dates(d).filter(x=>x<d&&status(db,t.id,x)==='done').length;const remaining=Math.max(0,v.n-prior);if(!remaining)return false;const eligibleStart=[mon,v.start,v.effective].sort().at(-1);const available=diff(end,eligibleStart)+1;const elapsed=diff(d,eligibleStart)+1;const remainingDays=diff(end,d)+1;return remaining>=remainingDays||Math.floor(elapsed*v.n/available)>prior;}
+export function visible(db,t,d){return suggested(db,t,d)||!!record(db,t.id,d);}
+export function validateTask(v){if(!v||typeof v.name!=='string'||!v.name.trim()||v.name.trim().length>80)throw Error('名前を1〜80文字で入力してください。');if(!['interval','weekly'].includes(v.kind)||!Number.isInteger(v.n)||v.n<1||v.n>(v.kind==='weekly'?7:365))throw Error(v?.kind==='weekly'?'回数は1〜7で入力してください。':'日数は1〜365で入力してください。');if(!validDate(v.start))throw Error('開始日を入力してください。');}
+export function setProgress(db,id,d,s){if(!validDate(d)||!['todo','doing','done'].includes(s))throw Error('進捗が正しくありません。');const t=db.tasks.find(t=>t.id===id);if(!t||(!active(t,d)&&!record(db,id,d)))throw Error('この日のタスクはありません。');const v=schedule(t,d);db.records[`${id}:${d}`]={taskId:id,date:d,status:s,name:record(db,id,d)?.name||v.name,kind:record(db,id,d)?.kind||v.kind,n:record(db,id,d)?.n||v.n};}
+export function saveTask(db,id,input,now){validateTask(input);const v={...input,name:input.name.trim(),effective:now};if(id){const t=db.tasks.find(t=>t.id===id);if(!t)throw Error('タスクが見つかりません。');t.versions=t.versions.filter(x=>x.effective<now);t.versions.push(v);}else{db.tasks.push({id:crypto.randomUUID(),versions:[{...v,effective:input.start}]});}}
+export function validateDB(x){if(x?.version!==1||!Array.isArray(x.tasks)||!x.records||typeof x.records!=='object'||Array.isArray(x.records))throw Error('保存データを読み込めませんでした。');const ids=new Set();for(const t of x.tasks){if(typeof t.id!=='string'||ids.has(t.id)||!Array.isArray(t.versions)||!t.versions.length)throw Error('保存データが不正です。');ids.add(t.id);for(const v of t.versions){validateTask(v);if(!validDate(v.effective))throw Error('保存日が不正です。');}if(t.deletedFrom&&!validDate(t.deletedFrom))throw Error('削除日が不正です。');}for(const [key,r] of Object.entries(x.records)){if(!r||!ids.has(r.taskId)||key!==`${r.taskId}:${r.date}`||!validDate(r.date)||!['todo','doing','done'].includes(r.status)||typeof r.name!=='string')throw Error('履歴が不正です。');}return x;}
