@@ -1,4 +1,4 @@
-# 日々 ToDo
+# To Do List
 
 公開版: https://sakamototakurounin-glitch.github.io/hibi-todo/
 「日々ToDo.html」は単体でブラウザーから利用できます。`node server.mjs` でも起動できます。
@@ -28,3 +28,8 @@ localStorageにブラウザーごとに保存します。変更は今日以降�
 `tests/extra-browser.mjs`: 単体HTML・安全な文字列表示・保存失敗時の入力保持。
 `node build-standalone.mjs`: 単体HTMLを再生成。
 ブラウザーテストのPlaywrightパスはこの作業環境用です。
+
+## iPhone向けの表示とアイコン
+入力・選択欄を16px以上にし、手動のピンチズームは維持します。タッチ端末での自動フォーカスを抑え、編集ダイアログは上端を固定します。名前はTo Do List。faviconと180px Apple touch icon、192/512pxアプリ用アイコンを同梱します。
+ChromiumのiPhone 13エミュレーションで、入力時scale=1、ダイアログ位置、アイコン配信とサイズ、登録保存を確認しました。実機iPhone/Safari/ホーム画面追加での確認は未実施。WebKitテスト環境は必要ライブラリ不足で起動できませんでした。
+
