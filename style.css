@@ -5,3 +5,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 input,select,textarea,form label>input,form label>select{font-size:max(16px,1rem);line-height:1.4}
 .shell{height:100svh}.logo{background:transparent;display:block;object-fit:contain;flex-shrink:0}.brand{font-size:22px;letter-spacing:-.02em}
 @media(max-width:600px){.brand{font-size:20px}dialog{position:fixed;top:max(12px,env(safe-area-inset-top));bottom:auto;margin:0 auto;max-height:calc(100svh - 24px)}.shell{padding-bottom:env(safe-area-inset-bottom)}}
+
+/* Fixed registration surface: keep the page behind it still during keyboard focus. */
+body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden;overscroll-behavior:none}
+body.modal-open .shell{height:var(--locked-page-height,100svh)}
+#editor{position:fixed;top:max(12px,env(safe-area-inset-top));bottom:auto;margin:0 auto;max-height:var(--editor-max-height,calc(100svh - 24px));overscroll-behavior:contain;overflow-x:hidden;scrollbar-gutter:stable;animation:none;transition:none}
+#start,#scheduled-date{display:block;width:12rem;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden;-webkit-appearance:none;appearance:none}
+input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.4em}
