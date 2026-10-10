@@ -12,3 +12,5 @@ body.modal-open .shell{height:var(--locked-page-height,100svh)}
 #editor{position:fixed;top:max(12px,env(safe-area-inset-top));bottom:auto;margin:0 auto;max-height:var(--editor-max-height,calc(100svh - 24px));overscroll-behavior:contain;overflow-x:hidden;scrollbar-gutter:stable;animation:none;transition:none}
 #start,#scheduled-date{display:block;width:12rem;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden;-webkit-appearance:none;appearance:none}
 input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.4em}
+
+.task.required{background:#fff1ef;border-color:#efc9c4}.task.required .task-title{color:#71362f}.task.required .check:not(.done){border-color:#d9a39d}.task.required .progress-btn{color:#92564e}.task.required .progress-btn.doing{background:#fce0dc}

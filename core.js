@@ -40,5 +40,5 @@ if(v.kind!=='combined')return {level:suggested(db,t,d)?'required':'none',overdue
 if(v.intervalDays===null&&v.weeklyCount===null)return {level:completions.length?'none':'optional',overdue:0,urgency:0};
 const last=completions.filter(x=>x<d).at(-1);const due=v.intervalDays===null?null:last?addDays(last,v.intervalDays):v.start;const overdue=due?diff(d,due):-Infinity;
 const prior=dates(d).filter(x=>x<d&&status(db,t.id,x)==='done').length;const missing=v.weeklyCount===null?0:Math.max(0,v.weeklyCount-prior);const remainingDays=diff(addDays(monday(d),6),d)+1;
-return {level:overdue>=0?'required':missing>0?'optional':'none',overdue:Number.isFinite(overdue)?overdue:0,urgency:missing/remainingDays,missing};}
+return {level:overdue>=0||missing>0?'required':'none',overdue:Number.isFinite(overdue)?overdue:0,urgency:missing/remainingDays,missing};}
 export function compareTasks(db,d,a,b){const ca=classify(db,a,d),cb=classify(db,b,d),rank={required:0,optional:1,none:2,done:3};return rank[ca.level]-rank[cb.level]||(ca.level==='required'?cb.overdue-ca.overdue:0)||((status(db,b.id,d)==='doing')-(status(db,a.id,d)==='doing'))||cb.urgency-ca.urgency;}
