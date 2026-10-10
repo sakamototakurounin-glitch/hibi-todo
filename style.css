@@ -14,3 +14,9 @@ body.modal-open .shell{height:var(--locked-page-height,100svh)}
 input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.4em}
 
 .task.required{background:#fff1ef;border-color:#efc9c4}.task.required .task-title{color:#71362f}.task.required .check:not(.done){border-color:#d9a39d}.task.required .progress-btn{color:#92564e}.task.required .progress-btn.doing{background:#fce0dc}
+
+/* Compact date row and a fixed-size add/edit panel. */
+#editor{height:min(530px,var(--editor-max-height,calc(100svh - 24px)));max-height:var(--editor-max-height,calc(100svh - 24px));contain:layout}
+form .compact-date{display:grid;grid-template-columns:minmax(0,1fr) 150px;align-items:center;gap:12px;min-height:46px}
+form .compact-date input{width:150px;max-width:150px;margin-top:0;padding:9px 8px;font-size:16px}
+@media(max-width:360px){form .compact-date{grid-template-columns:minmax(0,1fr) 140px;gap:8px}form .compact-date input{width:140px;max-width:140px}}
