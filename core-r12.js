@@ -1,0 +1,63 @@
+export const DAY=86400000;
+export function validDate(s){return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;}
+export const stamp=s=>Date.parse(s+'T00:00:00Z');
+export const addDays=(s,n)=>new Date(stamp(s)+n*DAY).toISOString().slice(0,10);
+export const diff=(a,b)=>Math.round((stamp(a)-stamp(b))/DAY);
+export function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+export function monday(s){return addDays(s,-((new Date(stamp(s)).getUTCDay()+6)%7));}
+export const dates=s=>Array.from({length:7},(_,i)=>addDays(monday(s),i));
+export function schedule(t,d){return [...t.versions].reverse().find(v=>v.effective<=d);}
+export function active(t,d){const v=schedule(t,d);return !!v&&d>=v.start&&(!t.deletedFrom||d<t.deletedFrom);}
+export const record=(db,id,d)=>db.records[`${id}:${d}`];
+export const status=(db,id,d)=>record(db,id,d)?.status||'todo';
+export function weekly(db,t,d){const v=schedule(t,d);if(!v)return {done:0,target:0};const ds=dates(d);const done=ds.filter(x=>status(db,t.id,x)==='done').length;return {done,target:v.kind==='combined'?(v.weeklyCount||(v.intervalDays?Math.max(1,Math.ceil(ds.filter(x=>active(t,x)).length/v.intervalDays)):0)):['deadline','ondate'].includes(v.kind)?(ds.includes(v.date)?1:0):v.kind==='weekly'?v.n:ds.filter(x=>{const s=schedule(t,x);return active(t,x)&&s?.kind==='interval'&&diff(x,s.start)%s.n===0;}).length};}
+export function suggested(db,t,d){if(!active(t,d))return false;const v=schedule(t,d);if(['combined','deadline','ondate'].includes(v.kind))return ['required','optional'].includes(classify(db,t,d).level);if(v.kind==='interval')return diff(d,v.start)%v.n===0;const mon=monday(d),end=addDays(mon,6);const prior=dates(d).filter(x=>x<d&&status(db,t.id,x)==='done').length;const remaining=Math.max(0,v.n-prior);if(!remaining)return false;const eligibleStart=[mon,v.start,v.effective].sort().at(-1);const available=diff(end,eligibleStart)+1;const elapsed=diff(d,eligibleStart)+1;const remainingDays=diff(end,d)+1;return remaining>=remainingDays||Math.floor(elapsed*v.n/available)>prior;}
+export function visible(db,t,d){return suggested(db,t,d)||!!record(db,t.id,d);}
+export function validateTask(v){
+if(!v||typeof v.name!=='string'||!v.name.trim()||v.name.trim().length>80)throw Error('名前を1〜80文字で入力してください。');
+if(v.kind==='combined'){
+if(v.intervalDays!==null&&(!Number.isInteger(v.intervalDays)||v.intervalDays<1||v.intervalDays>365))throw Error('日数を選んでください。');
+if(v.weeklyCount!==null&&(!Number.isInteger(v.weeklyCount)||v.weeklyCount<1||v.weeklyCount>7))throw Error('週の回数を選んでください。');
+}else if(['deadline','ondate'].includes(v.kind)){if(!validDate(v.date))throw Error('日付を選んでください。');if(v.date<v.start)throw Error('開始日より前の日付は選べません。');}
+else if(!['interval','weekly'].includes(v.kind)||!Number.isInteger(v.n)||v.n<1||v.n>(v.kind==='weekly'?7:365))throw Error('頻度が正しくありません。');
+if(!validDate(v.start))throw Error('開始日を入力してください。');}
+export function setProgress(db,id,d,s){
+if(!validDate(d)||!['todo','doing','done'].includes(s))throw Error('進捗が正しくありません。');const t=db.tasks.find(t=>t.id===id);if(!t||(!active(t,d)&&!record(db,id,d)))throw Error('この日のタスクはありません。');const v=schedule(t,d),previous=record(db,id,d);const snapshot=previous||{name:v.name,kind:v.kind,...(v.kind==='combined'?{intervalDays:v.intervalDays,weeklyCount:v.weeklyCount}:['deadline','ondate'].includes(v.kind)?{scheduledDate:v.date}:{n:v.n})};db.records[id+':'+d]={...snapshot,taskId:id,date:d,status:s};}
+export function saveTask(db,id,input,now){validateTask(input);const v={...input,name:input.name.trim(),effective:now};if(id){const t=db.tasks.find(t=>t.id===id);if(!t)throw Error('タスクが見つかりません。');t.versions=t.versions.filter(x=>x.effective<now);t.versions.push(v);}else{db.tasks.push({id:crypto.randomUUID(),versions:[{...v,effective:input.start}]});}}
+export function validateDB(x){if(x?.version!==1||!Array.isArray(x.tasks)||!x.records||typeof x.records!=='object'||Array.isArray(x.records))throw Error('保存データを読み込めませんでした。');const ids=new Set();for(const t of x.tasks){if(typeof t.id!=='string'||ids.has(t.id)||!Array.isArray(t.versions)||!t.versions.length)throw Error('保存データが不正です。');ids.add(t.id);for(const v of t.versions){validateTask(v);if(!validDate(v.effective))throw Error('保存日が不正です。');}if(t.deletedFrom&&!validDate(t.deletedFrom))throw Error('削除日が不正です。');}for(const [key,r] of Object.entries(x.records)){if(!r||!ids.has(r.taskId)||key!==`${r.taskId}:${r.date}`||!validDate(r.date)||!['todo','doing','done'].includes(r.status)||typeof r.name!=='string')throw Error('履歴が不正です。');}return x;}
+
+export function combinedSettings(v){return v.kind==='combined'?{intervalDays:v.intervalDays,weeklyCount:v.weeklyCount}:v.kind==='interval'?{intervalDays:v.n,weeklyCount:Math.max(1,Math.floor(7/v.n))}:{intervalDays:Math.max(1,Math.ceil(7/v.n)),weeklyCount:v.n};}
+export function migrateDB(db,now){for(const t of db.tasks){if(t.deletedFrom)continue;const current=schedule(t,now)||t.versions.at(-1);if(!['interval','weekly'].includes(current.kind))continue;const v={name:current.name,kind:'combined',...combinedSettings(current),start:current.start,effective:current.effective>now?current.effective:now};t.versions=t.versions.filter(x=>x.effective<v.effective);t.versions.push(v);}return db;}
+export function classify(db,t,d){
+if(status(db,t.id,d)==='done')return {level:'done',overdue:0,urgency:0};
+if(!active(t,d))return {level:'none',overdue:0,urgency:0};const v=schedule(t,d);
+const completions=Object.values(db.records).filter(r=>r.taskId===t.id&&r.status==='done'&&r.date<=d&&r.date>=v.start).map(r=>r.date).sort();
+if(['deadline','ondate'].includes(v.kind)){
+if(completions.length)return {level:'none',overdue:0,urgency:0};
+const overdue=diff(d,v.date);return {level:v.kind==='ondate'&&overdue<0?'none':overdue>=0?'required':'optional',overdue,urgency:overdue>=0?1:1/Math.max(1,-overdue)};
+}
+if(v.kind!=='combined')return {level:suggested(db,t,d)?'required':'none',overdue:0,urgency:0};
+if(v.intervalDays===null&&v.weeklyCount===null)return {level:completions.length?'none':'optional',overdue:0,urgency:0};
+const last=completions.filter(x=>x<d).at(-1);const due=v.intervalDays===null?null:last?addDays(last,v.intervalDays):v.start;const overdue=due?diff(d,due):-Infinity;
+const prior=dates(d).filter(x=>x<d&&status(db,t.id,x)==='done').length;const missing=v.weeklyCount===null?0:Math.max(0,v.weeklyCount-prior);const remainingDays=diff(addDays(monday(d),6),d)+1;
+return {level:overdue>=0||(missing>0&&missing>=remainingDays)?'required':missing>0?'optional':'none',overdue:Number.isFinite(overdue)?overdue:0,urgency:missing/remainingDays,missing};}
+export function compareTasks(db,d,a,b){const ca=classify(db,a,d),cb=classify(db,b,d),rank={required:0,optional:1,none:2,done:3};return rank[ca.level]-rank[cb.level]||(ca.level==='required'?cb.overdue-ca.overdue:0)||((status(db,b.id,d)==='doing')-(status(db,a.id,d)==='doing'))||cb.urgency-ca.urgency;}
+
+export const categories=['語学','理系','健康','課題'];
+export function categoryFor(name){
+const text=String(name).normalize('NFKC');if(text.includes('課題'))return '課題';
+const rules=[
+/英語|英会話|英単語|語学|外国語|中国語|韓国語|日本語|フランス語|ドイツ語|スペイン語|イタリア語|ロシア語|ポルトガル語|単語|文法|リスニング|スピーキング|リーディング|ライティング|読解|長文|音読|発音|シャドーイング|ディクテーション|多読|精読|翻訳|作文|英検|漢字|国語|古文|漢文|language|english|vocab|toeic|toefl|ielts|reading|listening|speaking|writing|grammar|pronunciation|shadowing|dictation|translation|duolingo/gi,
+/数学|算数|理科|物理|化学|生物|科学|統計|微分|積分|計算|力学|電磁気|電磁|熱力学|熱学|波動|光学|量子|相対論|解析|線形代数|代数|幾何|確率|数列|ベクトル|三角関数|関数|方程式|集合|整数|有機|無機|高分子|生化学|遺伝|細胞|地学|地理|天文|地質|回路|電気|電子|工学|材料|プログラ|コーディング|情報|アルゴリズム|データ|実験|math|physics|chemistry|science|coding|programming|mechanics|thermodynamics|electromagnetism|calculus|algebra|geometry|statistics|biology|python|javascript|typescript|robotics/gi,
+/健康|運動|筋トレ|ストレッチ|散歩|歩く|ウォーキング|ランニング|ジョギング|ヨガ|睡眠|早寝|早起き|体操|歯磨き|歯みがき|水分|水を飲|食事|野菜|ジム|瞑想|体重|薬|スポーツ|筋力|腹筋|腕立て|スクワット|懸垂|ベンチプレス|デッドリフト|プランク|有酸素|サイクリング|自転車|水泳|泳ぐ|スイミング|ピラティス|柔軟|入浴|風呂|休息|休養|姿勢|栄養|プロテイン|呼吸|リハビリ|workout|fitness|health|exercise|running|walking|yoga|sleep|stretch|swimming|cycling|meditation|nutrition/gi];
+const scores=rules.map(r=>(text.match(r)||[]).length),best=Math.max(...scores);return best?categories[scores.indexOf(best)]:null;}
+export function powerStats(db,d){
+const result=categories.map(category=>({category,score:0,tasks:[]}));const ds=dates(d);
+for(const t of db.tasks){const v=schedule(t,d)||t.versions.find(v=>v.effective<=ds[6]);if(!v||!['combined','interval','weekly'].includes(v.kind))continue;
+const settings=combinedSettings(v);if(settings.intervalDays===null&&settings.weeklyCount===null)continue;
+const eligible=ds.filter(x=>active(t,x));if(!eligible.length&&!ds.some(x=>record(db,t.id,x)?.status==='done'))continue;
+const done=ds.filter(x=>status(db,t.id,x)==='done').length;
+const target=weekly(db,t,d).target||1;
+const score=Math.min(1,done/target),category=categoryFor(v.name),group=result.find(g=>g.category===category);
+if(!group)continue;group.score+=score;group.tasks.push({id:t.id,name:v.name,score,done,target});}
+return result;}

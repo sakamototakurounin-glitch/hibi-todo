@@ -45,9 +45,12 @@ export function compareTasks(db,d,a,b){const ca=classify(db,a,d),cb=classify(db,
 
 export const categories=['語学','理系','健康','課題'];
 export function categoryFor(name){
-if(String(name).includes('課題'))return '課題';
-const rules=[/英語|英会話|英単語|語学|外国語|中国語|韓国語|日本語|フランス語|ドイツ語|スペイン語|単語|文法|リスニング|スピーキング|language|english|vocab|toeic|toefl|ielts/gi,/数学|算数|理科|物理|化学|生物|科学|統計|微分|積分|計算|プログラ|コーディング|情報|アルゴリズム|データ|実験|math|physics|chemistry|science|coding|programming/gi,/健康|運動|筋トレ|ストレッチ|散歩|歩く|ウォーキング|ランニング|ジョギング|ヨガ|睡眠|早寝|体操|歯磨き|水分|食事|野菜|ジム|瞑想|体重|薬|スポーツ|workout|fitness|health|exercise/gi];
-const scores=rules.map(r=>(String(name).match(r)||[]).length);const best=Math.max(...scores);return best?categories[scores.indexOf(best)]:null;}
+const text=String(name).normalize('NFKC');if(text.includes('課題'))return '課題';
+const rules=[
+/英語|英会話|英単語|語学|外国語|中国語|韓国語|日本語|フランス語|ドイツ語|スペイン語|イタリア語|ロシア語|ポルトガル語|単語|文法|リスニング|スピーキング|リーディング|ライティング|読解|長文|音読|発音|シャドーイング|ディクテーション|多読|精読|翻訳|作文|英検|漢字|国語|古文|漢文|language|english|vocab|toeic|toefl|ielts|reading|listening|speaking|writing|grammar|pronunciation|shadowing|dictation|translation|duolingo/gi,
+/数学|算数|理科|物理|化学|生物|科学|統計|微分|積分|計算|力学|電磁気|電磁|熱力学|熱学|波動|光学|量子|相対論|解析|線形代数|代数|幾何|確率|数列|ベクトル|三角関数|関数|方程式|集合|整数|有機|無機|高分子|生化学|遺伝|細胞|地学|地理|天文|地質|回路|電気|電子|工学|材料|プログラ|コーディング|情報|アルゴリズム|データ|実験|math|physics|chemistry|science|coding|programming|mechanics|thermodynamics|electromagnetism|calculus|algebra|geometry|statistics|biology|python|javascript|typescript|robotics/gi,
+/健康|運動|筋トレ|ストレッチ|散歩|歩く|ウォーキング|ランニング|ジョギング|ヨガ|睡眠|早寝|早起き|体操|歯磨き|歯みがき|水分|水を飲|食事|野菜|ジム|瞑想|体重|薬|スポーツ|筋力|腹筋|腕立て|スクワット|懸垂|ベンチプレス|デッドリフト|プランク|有酸素|サイクリング|自転車|水泳|泳ぐ|スイミング|ピラティス|柔軟|入浴|風呂|休息|休養|姿勢|栄養|プロテイン|呼吸|リハビリ|workout|fitness|health|exercise|running|walking|yoga|sleep|stretch|swimming|cycling|meditation|nutrition/gi];
+const scores=rules.map(r=>(text.match(r)||[]).length),best=Math.max(...scores);return best?categories[scores.indexOf(best)]:null;}
 export function powerStats(db,d){
 const result=categories.map(category=>({category,score:0,tasks:[]}));const ds=dates(d);
 for(const t of db.tasks){const v=schedule(t,d)||t.versions.find(v=>v.effective<=ds[6]);if(!v||!['combined','interval','weekly'].includes(v.kind))continue;
