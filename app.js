@@ -1,4 +1,4 @@
-import {today,addDays,dates,schedule,active,record,status,weekly,visible,validateDB,saveTask,setProgress,validDate,combinedSettings,migrateDB,classify,compareTasks,powerStats} from './core-r12.js';
+import {today,addDays,dates,schedule,active,record,status,weekly,visible,validateDB,saveTask,setProgress,validDate,combinedSettings,migrateDB,classify,compareTasks,powerStats} from './core-v1.0.js';
 const KEY='hibi-todo-v1',$=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const views=['today','progress','tasks','history'];let db={version:1,tasks:[],records:{}},selected=today(),tab=views.includes(location.hash.slice(1))?location.hash.slice(1):'today',page=0,editing=null,deleting=null,blocked=false,timer,progressMode='list';
 function error(message){$('#error').textContent=message;$('#error').hidden=false;}
