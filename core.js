@@ -45,8 +45,9 @@ export function compareTasks(db,d,a,b){const ca=classify(db,a,d),cb=classify(db,
 
 export const categories=['語学','理系','健康','課題'];
 export function categoryFor(name){
+if(String(name).includes('課題'))return '課題';
 const rules=[/英語|英会話|英単語|語学|外国語|中国語|韓国語|日本語|フランス語|ドイツ語|スペイン語|単語|文法|リスニング|スピーキング|language|english|vocab|toeic|toefl|ielts/gi,/数学|算数|理科|物理|化学|生物|科学|統計|微分|積分|計算|プログラ|コーディング|情報|アルゴリズム|データ|実験|math|physics|chemistry|science|coding|programming/gi,/健康|運動|筋トレ|ストレッチ|散歩|歩く|ウォーキング|ランニング|ジョギング|ヨガ|睡眠|早寝|体操|歯磨き|水分|食事|野菜|ジム|瞑想|体重|薬|スポーツ|workout|fitness|health|exercise/gi];
-const scores=rules.map(r=>(String(name).match(r)||[]).length);const best=Math.max(...scores);return best?categories[scores.indexOf(best)]:'課題';}
+const scores=rules.map(r=>(String(name).match(r)||[]).length);const best=Math.max(...scores);return best?categories[scores.indexOf(best)]:null;}
 export function powerStats(db,d){
 const result=categories.map(category=>({category,score:0,tasks:[]}));const ds=dates(d);
 for(const t of db.tasks){const v=schedule(t,d)||t.versions.find(v=>v.effective<=ds[6]);if(!v||!['combined','interval','weekly'].includes(v.kind))continue;
@@ -55,5 +56,5 @@ const eligible=ds.filter(x=>active(t,x));if(!eligible.length&&!ds.some(x=>record
 const done=ds.filter(x=>status(db,t.id,x)==='done').length;
 const target=weekly(db,t,d).target||1;
 const score=Math.min(1,done/target),category=categoryFor(v.name),group=result.find(g=>g.category===category);
-group.score+=score;group.tasks.push({id:t.id,name:v.name,score,done,target});}
+if(!group)continue;group.score+=score;group.tasks.push({id:t.id,name:v.name,score,done,target});}
 return result;}
