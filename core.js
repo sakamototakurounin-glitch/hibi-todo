@@ -10,7 +10,7 @@ export function schedule(t,d){return [...t.versions].reverse().find(v=>v.effecti
 export function active(t,d){const v=schedule(t,d);return !!v&&d>=v.start&&(!t.deletedFrom||d<t.deletedFrom);}
 export const record=(db,id,d)=>db.records[`${id}:${d}`];
 export const status=(db,id,d)=>record(db,id,d)?.status||'todo';
-export function weekly(db,t,d){const v=schedule(t,d);if(!v)return {done:0,target:0};const ds=dates(d);const done=ds.filter(x=>status(db,t.id,x)==='done').length;return {done,target:v.kind==='combined'?(v.weeklyCount||0):['deadline','ondate'].includes(v.kind)?(ds.includes(v.date)?1:0):v.kind==='weekly'?v.n:ds.filter(x=>{const s=schedule(t,x);return active(t,x)&&s?.kind==='interval'&&diff(x,s.start)%s.n===0;}).length};}
+export function weekly(db,t,d){const v=schedule(t,d);if(!v)return {done:0,target:0};const ds=dates(d);const done=ds.filter(x=>status(db,t.id,x)==='done').length;return {done,target:v.kind==='combined'?(v.weeklyCount||(v.intervalDays?Math.max(1,Math.ceil(ds.filter(x=>active(t,x)).length/v.intervalDays)):0)):['deadline','ondate'].includes(v.kind)?(ds.includes(v.date)?1:0):v.kind==='weekly'?v.n:ds.filter(x=>{const s=schedule(t,x);return active(t,x)&&s?.kind==='interval'&&diff(x,s.start)%s.n===0;}).length};}
 export function suggested(db,t,d){if(!active(t,d))return false;const v=schedule(t,d);if(['combined','deadline','ondate'].includes(v.kind))return ['required','optional'].includes(classify(db,t,d).level);if(v.kind==='interval')return diff(d,v.start)%v.n===0;const mon=monday(d),end=addDays(mon,6);const prior=dates(d).filter(x=>x<d&&status(db,t.id,x)==='done').length;const remaining=Math.max(0,v.n-prior);if(!remaining)return false;const eligibleStart=[mon,v.start,v.effective].sort().at(-1);const available=diff(end,eligibleStart)+1;const elapsed=diff(d,eligibleStart)+1;const remainingDays=diff(end,d)+1;return remaining>=remainingDays||Math.floor(elapsed*v.n/available)>prior;}
 export function visible(db,t,d){return suggested(db,t,d)||!!record(db,t.id,d);}
 export function validateTask(v){
@@ -42,3 +42,18 @@ const last=completions.filter(x=>x<d).at(-1);const due=v.intervalDays===null?nul
 const prior=dates(d).filter(x=>x<d&&status(db,t.id,x)==='done').length;const missing=v.weeklyCount===null?0:Math.max(0,v.weeklyCount-prior);const remainingDays=diff(addDays(monday(d),6),d)+1;
 return {level:overdue>=0||(missing>0&&missing>=remainingDays)?'required':missing>0?'optional':'none',overdue:Number.isFinite(overdue)?overdue:0,urgency:missing/remainingDays,missing};}
 export function compareTasks(db,d,a,b){const ca=classify(db,a,d),cb=classify(db,b,d),rank={required:0,optional:1,none:2,done:3};return rank[ca.level]-rank[cb.level]||(ca.level==='required'?cb.overdue-ca.overdue:0)||((status(db,b.id,d)==='doing')-(status(db,a.id,d)==='doing'))||cb.urgency-ca.urgency;}
+
+export const categories=['語学','理系','健康','課題'];
+export function categoryFor(name){
+const rules=[/英語|英会話|英単語|語学|外国語|中国語|韓国語|日本語|フランス語|ドイツ語|スペイン語|単語|文法|リスニング|スピーキング|language|english|vocab|toeic|toefl|ielts/gi,/数学|算数|理科|物理|化学|生物|科学|統計|微分|積分|計算|プログラ|コーディング|情報|アルゴリズム|データ|実験|math|physics|chemistry|science|coding|programming/gi,/健康|運動|筋トレ|ストレッチ|散歩|歩く|ウォーキング|ランニング|ジョギング|ヨガ|睡眠|早寝|体操|歯磨き|水分|食事|野菜|ジム|瞑想|体重|薬|スポーツ|workout|fitness|health|exercise/gi];
+const scores=rules.map(r=>(String(name).match(r)||[]).length);const best=Math.max(...scores);return best?categories[scores.indexOf(best)]:'課題';}
+export function powerStats(db,d){
+const result=categories.map(category=>({category,score:0,tasks:[]}));const ds=dates(d);
+for(const t of db.tasks){const v=schedule(t,d)||t.versions.find(v=>v.effective<=ds[6]);if(!v||!['combined','interval','weekly'].includes(v.kind))continue;
+const settings=combinedSettings(v);if(settings.intervalDays===null&&settings.weeklyCount===null)continue;
+const eligible=ds.filter(x=>active(t,x));if(!eligible.length&&!ds.some(x=>record(db,t.id,x)?.status==='done'))continue;
+const done=ds.filter(x=>status(db,t.id,x)==='done').length;
+const target=weekly(db,t,d).target||1;
+const score=Math.min(1,done/target),category=categoryFor(v.name),group=result.find(g=>g.category===category);
+group.score+=score;group.tasks.push({id:t.id,name:v.name,score,done,target});}
+return result;}
