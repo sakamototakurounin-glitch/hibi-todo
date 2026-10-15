@@ -60,4 +60,4 @@ const done=ds.filter(x=>status(db,t.id,x)==='done').length;
 const target=weekly(db,t,d).target||1;
 const score=Math.min(1,done/target),category=categoryFor(v.name),group=result.find(g=>g.category===category);
 if(!group)continue;group.score+=score;group.tasks.push({id:t.id,name:v.name,score,done,target});}
-return result;}
+return result.map(g=>({...g,capacity:g.tasks.length,ratio:g.tasks.length?g.score/g.tasks.length:0}));}
