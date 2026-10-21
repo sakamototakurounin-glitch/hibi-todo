@@ -12,7 +12,9 @@ export const record=(db,id,d)=>db.records[`${id}:${d}`];
 export const status=(db,id,d)=>record(db,id,d)?.status||'todo';
 export function weekly(db,t,d){const v=schedule(t,d);if(!v)return {done:0,target:0};const ds=dates(d);const done=ds.filter(x=>status(db,t.id,x)==='done').length;return {done,target:v.kind==='combined'?(v.weeklyCount||(v.intervalDays?Math.max(1,Math.ceil(ds.filter(x=>active(t,x)).length/v.intervalDays)):0)):['deadline','ondate'].includes(v.kind)?(ds.includes(v.date)?1:0):v.kind==='weekly'?v.n:ds.filter(x=>{const s=schedule(t,x);return active(t,x)&&s?.kind==='interval'&&diff(x,s.start)%s.n===0;}).length};}
 export function suggested(db,t,d){if(!active(t,d))return false;const v=schedule(t,d);if(['combined','deadline','ondate'].includes(v.kind))return ['required','optional'].includes(classify(db,t,d).level);if(v.kind==='interval')return diff(d,v.start)%v.n===0;const mon=monday(d),end=addDays(mon,6);const prior=dates(d).filter(x=>x<d&&status(db,t.id,x)==='done').length;const remaining=Math.max(0,v.n-prior);if(!remaining)return false;const eligibleStart=[mon,v.start,v.effective].sort().at(-1);const available=diff(end,eligibleStart)+1;const elapsed=diff(d,eligibleStart)+1;const remainingDays=diff(end,d)+1;return remaining>=remainingDays||Math.floor(elapsed*v.n/available)>prior;}
-export function visible(db,t,d){return suggested(db,t,d)||!!record(db,t.id,d);}
+// 期限（または指定日）の翌日以降は一覧から隠す。データ・履歴・達成状況には影響しない。
+export function expired(t,d){const v=schedule(t,d);return !!v&&['deadline','ondate'].includes(v.kind)&&validDate(v.date)&&d>v.date;}
+export function visible(db,t,d){return (suggested(db,t,d)&&!expired(t,d))||!!record(db,t.id,d);}
 export function validateTask(v){
 if(!v||typeof v.name!=='string'||!v.name.trim()||v.name.trim().length>80)throw Error('名前を1〜80文字で入力してください。');
 if(v.kind==='combined'){
