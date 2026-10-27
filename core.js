@@ -53,6 +53,9 @@ const rules=[
 /数学|算数|理科|物理|化学|生物|科学|統計|微分|積分|計算|力学|電磁気|電磁|熱力学|熱学|波動|光学|量子|相対論|解析|線形代数|代数|幾何|確率|数列|ベクトル|三角関数|関数|方程式|集合|整数|有機|無機|高分子|生化学|遺伝|細胞|地学|地理|天文|地質|回路|電気|電子|工学|材料|プログラ|コーディング|情報|アルゴリズム|データ|実験|math|physics|chemistry|science|coding|programming|mechanics|thermodynamics|electromagnetism|calculus|algebra|geometry|statistics|biology|python|javascript|typescript|robotics/gi,
 /健康|運動|筋トレ|ストレッチ|散歩|歩く|ウォーキング|ランニング|ジョギング|ヨガ|睡眠|早寝|早起き|体操|歯磨き|歯みがき|水分|水を飲|食事|野菜|ジム|瞑想|体重|薬|スポーツ|筋力|腹筋|腕立て|スクワット|懸垂|ベンチプレス|デッドリフト|プランク|有酸素|サイクリング|自転車|水泳|泳ぐ|スイミング|ピラティス|柔軟|入浴|風呂|休息|休養|姿勢|栄養|プロテイン|呼吸|リハビリ|workout|fitness|health|exercise|running|walking|yoga|sleep|stretch|swimming|cycling|meditation|nutrition/gi];
 const scores=rules.map(r=>(text.match(r)||[]).length),best=Math.max(...scores);return best?categories[scores.indexOf(best)]:null;}
+// 定期タスク（間隔か週の回数のどちらかを設定したもの）か。期限・指定日のタスクや、頻度を設定していないタスクは含まない。
+export function isRoutine(v){if(!v||!['combined','interval','weekly'].includes(v.kind))return false;const c=combinedSettings(v);return c.intervalDays!==null||c.weeklyCount!==null;}
+export function routineVersion(t,d){const ds=dates(d);return schedule(t,d)||t.versions.find(v=>v.effective<=ds[6]);}
 export function powerStats(db,d){
 const result=categories.map(category=>({category,score:0,tasks:[]}));const ds=dates(d);
 for(const t of db.tasks){const v=schedule(t,d)||t.versions.find(v=>v.effective<=ds[6]);if(!v||!['combined','interval','weekly'].includes(v.kind))continue;
