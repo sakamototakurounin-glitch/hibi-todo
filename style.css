@@ -28,3 +28,7 @@ form .compact-date input{width:150px;max-width:150px;margin-top:0;padding:9px 8p
 .version-label{font-size:12px;font-weight:500;letter-spacing:0;color:#69758a;white-space:nowrap}.brand{gap:8px}@media(max-width:360px){.brand{font-size:18px;gap:6px}.version-label{font-size:12px}}
 
 .week-nav{justify-content:space-between}.week-title{text-align:center;display:flex;flex-direction:column;gap:2px;min-width:0}.week-title h2{margin:0}.week-today{margin:10px auto 0;display:block}
+
+/* 画面が揺れにくいようにする：ダブルタップ拡大とページ全体の跳ね返りを止める（一覧内のスクロール・ピンチ拡大はそのまま） */
+*{touch-action:manipulation}
+html,body{overscroll-behavior:none}
