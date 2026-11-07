@@ -3,7 +3,7 @@ export function validDate(s){return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/
 export const stamp=s=>Date.parse(s+'T00:00:00Z');
 export const addDays=(s,n)=>new Date(stamp(s)+n*DAY).toISOString().slice(0,10);
 export const diff=(a,b)=>Math.round((stamp(a)-stamp(b))/DAY);
-export function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+export function today(now=new Date()){const d=new Date(now);if(d.getHours()<3)d.setDate(d.getDate()-1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 export function monday(s){return addDays(s,-((new Date(stamp(s)).getUTCDay()+6)%7));}
 export const dates=s=>Array.from({length:7},(_,i)=>addDays(monday(s),i));
 export function schedule(t,d){return [...t.versions].reverse().find(v=>v.effective<=d);}
